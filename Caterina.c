@@ -35,6 +35,7 @@
 
 #define  INCLUDE_FROM_CATERINA_C
 #include "Caterina.h"
+#include <util/atomic.h>
 
 /** Contains the current baud rate and other settings of the first virtual serial port. This must be retained as some
  *  operating systems will not open the port unless the settings can be set successfully.
@@ -56,10 +57,6 @@ static uint32_t CurrAddress;
  */
 static bool RunBootloader = true;
 
-/* Pulse generation counters to keep track of the time remaining for each pulse type */
-#define TX_RX_LED_PULSE_PERIOD 100
-uint16_t TxLEDPulse = 0; // time remaining for Tx LED pulse
-uint16_t RxLEDPulse = 0; // time remaining for Rx LED pulse
 
 /* Bootloader timeout timer */
 #define TIMEOUT_PERIOD	8000
@@ -67,6 +64,41 @@ uint16_t Timeout = 0;
 
 uint16_t bootKey = 0x7777;
 volatile uint16_t *const bootKeyPtr = (volatile uint16_t *)0x0800;
+
+static bool IsPageAddressValid(const uint32_t Address)
+{
+    /* Determine if the given page address is correctly aligned to the
+       start of a flash page. */
+    bool PageAddressIsAligned = !(Address & (SPM_PAGESIZE - 1));
+
+    return (Address < BOOT_START_ADDR) && PageAddressIsAligned;
+}
+
+static void BootloaderAPI_ErasePage(const uint32_t Address)
+{
+    if (! IsPageAddressValid(Address))
+        return;
+
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
+        boot_page_erase_safe(Address);
+        boot_spm_busy_wait();
+        boot_rww_enable();
+    }
+}
+
+static void BootloaderAPI_WritePage(const uint32_t Address)
+{
+    if (! IsPageAddressValid(Address))
+        return;
+
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
+        boot_page_write_safe(Address);
+        boot_spm_busy_wait();
+        boot_rww_enable();
+    }
+}
 
 void StartSketch(void)
 {
@@ -201,9 +233,7 @@ ISR(TIMER1_COMPA_vect, ISR_BLOCK)
 	TCNT1L = 0;
 
 	/* Check whether the TX or RX LED one-shot period has elapsed.  if so, turn off the LED */
-	if (TxLEDPulse && !(--TxLEDPulse))
 		TX_LED_OFF();
-	if (RxLEDPulse && !(--RxLEDPulse))
 		RX_LED_OFF();
 	
 	if (pgm_read_word(0) != 0xFFFF)
@@ -305,7 +335,7 @@ static void ReadWriteMemoryBlock(const uint8_t Command)
 	if (Command == 'g')
 	{		
 		/* Re-enable RWW section */
-		boot_rww_enable();
+		boot_rww_enable_safe();
 
 		while (BlockSize--)
 		{
@@ -340,8 +370,7 @@ static void ReadWriteMemoryBlock(const uint8_t Command)
 
 		if (MemoryType == 'F')
 		{
-			boot_page_erase(PageStartAddress);
-			boot_spm_busy_wait();
+		    BootloaderAPI_ErasePage(PageStartAddress);
 		}
 
 		while (BlockSize--)
@@ -352,7 +381,7 @@ static void ReadWriteMemoryBlock(const uint8_t Command)
 				if (HighByte)
 				{
 					/* Write the next FLASH word to the current FLASH page */
-					boot_page_fill(CurrAddress, ((FetchNextCommandByte() << 8) | LowByte));
+					boot_page_fill_safe(CurrAddress, ((FetchNextCommandByte() << 8) | LowByte));
 
 					/* Increment the address counter after use */
 					CurrAddress += 2;
@@ -378,10 +407,7 @@ static void ReadWriteMemoryBlock(const uint8_t Command)
 		if (MemoryType == 'F')
 		{
 			/* Commit the flash page to memory */
-			boot_page_write(PageStartAddress);
-
-			/* Wait until write operation has completed */
-			boot_spm_busy_wait();
+			BootloaderAPI_WritePage(PageStartAddress);
 		}
 
 		/* Send response byte back to the host */
@@ -443,9 +469,6 @@ static void WriteNextResponseByte(const uint8_t Response)
 
 	/* Write the next byte to the IN endpoint */
 	Endpoint_Write_8(Response);
-	
-	TX_LED_ON();
-	TxLEDPulse = TX_RX_LED_PULSE_PERIOD;
 }
 
 #define STK_OK              0x10
@@ -473,9 +496,6 @@ void CDC_Task(void)
 	/* Check if endpoint has a command in it sent from the host */
 	if (!(Endpoint_IsOUTReceived()))
 	  return;
-	  
-	RX_LED_ON();
-	RxLEDPulse = TX_RX_LED_PULSE_PERIOD;
 
 	/* Read in the bootloader command (first byte sent from host) */
 	uint8_t Command = FetchNextCommandByte();
@@ -554,9 +574,8 @@ void CDC_Task(void)
 		// Clear the application section of flash 
 		for (uint32_t CurrFlashAddress = 0; CurrFlashAddress < BOOT_START_ADDR; CurrFlashAddress += SPM_PAGESIZE)
 		{
-			boot_page_erase(CurrFlashAddress);
-			boot_spm_busy_wait();
-			boot_page_write(CurrFlashAddress);
+			boot_page_erase_safe(CurrFlashAddress);
+			boot_page_write_safe(CurrFlashAddress);
 			boot_spm_busy_wait();
 		}
 
@@ -610,7 +629,7 @@ void CDC_Task(void)
 	else if (Command == 'C')
 	{
 		// Write the high byte to the current flash page
-		boot_page_fill(CurrAddress, FetchNextCommandByte());
+		boot_page_fill_safe(CurrAddress, FetchNextCommandByte());
 
 		// Send confirmation byte back to the host 
 		WriteNextResponseByte('\r');
@@ -618,7 +637,7 @@ void CDC_Task(void)
 	else if (Command == 'c')
 	{
 		// Write the low byte to the current flash page 
-		boot_page_fill(CurrAddress | 0x01, FetchNextCommandByte());
+		boot_page_fill_safe(CurrAddress | 0x01, FetchNextCommandByte());
 
 		// Increment the address 
 		CurrAddress += 2;
@@ -629,10 +648,7 @@ void CDC_Task(void)
 	else if (Command == 'm')
 	{
 		// Commit the flash page to memory
-		boot_page_write(CurrAddress);
-
-		// Wait until write operation has completed 
-		boot_spm_busy_wait();
+		BootloaderAPI_WritePage(CurrAddress);
 
 		// Send confirmation byte back to the host 
 		WriteNextResponseByte('\r');
