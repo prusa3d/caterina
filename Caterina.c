@@ -115,8 +115,6 @@ void StartSketch(void)
 	MCUCR = 0;
 
 	L_LED_OFF();
-	TX_LED_OFF();
-	RX_LED_OFF();
 
 	/* jump to beginning of application space */
 	__asm__ volatile("jmp 0x0000");
@@ -207,8 +205,6 @@ void SetupHardware(void)
 	LED_SETUP();
 	CPU_PRESCALE(0); 
 	L_LED_OFF();
-	TX_LED_OFF();
-	RX_LED_OFF();
 	
 	/* Initialize TIMER1 to handle bootloader timeout and LED tasks.  
 	 * With 16 MHz clock and 1/64 prescaler, timer 1 is clocked at 250 kHz
@@ -231,10 +227,6 @@ ISR(TIMER1_COMPA_vect, ISR_BLOCK)
 	/* Reset counter */
 	TCNT1H = 0;
 	TCNT1L = 0;
-
-	/* Check whether the TX or RX LED one-shot period has elapsed.  if so, turn off the LED */
-		TX_LED_OFF();
-		RX_LED_OFF();
 	
 	if (pgm_read_word(0) != 0xFFFF)
 		Timeout++;
