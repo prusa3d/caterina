@@ -63,7 +63,7 @@ static bool RunBootloader = true;
 uint16_t Timeout = 0;
 
 uint16_t bootKey = 0x7777;
-volatile uint16_t *const bootKeyPtr = (volatile uint16_t *)0x0800;
+volatile uint16_t *const bootKeyPtr = (volatile uint16_t *)(RAMEND-1);
 
 static bool IsPageAddressValid(const uint32_t Address)
 {
