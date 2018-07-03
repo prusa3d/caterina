@@ -104,17 +104,9 @@ void StartSketch(void)
 {
 	cli();
 	
-	/* Undo TIMER1 setup and clear the count before running the sketch */
-	TIMSK1 = 0;
-	TCCR1B = 0;
-	TCNT1H = 0;		// 16-bit write to TCNT1 requires high byte be written first
-	TCNT1L = 0;
-	
 	/* Relocate the interrupt vector table to the application section */
 	MCUCR = (1 << IVCE);
 	MCUCR = 0;
-
-	L_LED_OFF();
 
 	/* jump to beginning of application space */
 	__asm__ volatile("jmp 0x0000");
@@ -184,8 +176,10 @@ int main(void)
 	/* Disconnect from the host - USB interface will be reset later along with the AVR */
 	USB_Detach();
 
-	/* Jump to beginning of application space to run the sketch - do not reset */	
-	StartSketch();
+	/* Watchdog reset to start the application. */
+
+	wdt_enable(WDTO_120MS);
+	while(1);
 }
 
 /** Configures all hardware required for the bootloader. */
@@ -193,7 +187,6 @@ void SetupHardware(void)
 {
 	/* Disable watchdog if enabled by bootloader/fuses */
 	MCUSR &= ~(1 << WDRF);
-	wdt_disable();
 
 	/* Disable clock division */
 	clock_prescale_set(clock_div_1);
