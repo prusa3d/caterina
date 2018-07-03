@@ -111,6 +111,14 @@ FLASH_SIZE_KB        = 32
 BOOT_SECTION_SIZE_KB = 4
 BOOT_START           = 0x$(shell echo "obase=16; ($(FLASH_SIZE_KB) - $(BOOT_SECTION_SIZE_KB)) * 1024" | bc)
 
+CALC_ADDRESS_IN_HEX   = $(shell printf "0x%X" $$(( $(1) )) )
+BOOT_START_OFFSET     = $(call CALC_ADDRESS_IN_HEX, ($(FLASH_SIZE_KB) - $(BOOT_SECTION_SIZE_KB)) * 1024 )
+BOOT_SEC_OFFSET       = $(call CALC_ADDRESS_IN_HEX, ($(FLASH_SIZE_KB) * 1024) - ($(strip $(1))) )
+
+BOOT_SECTION_LD_FLAG  = -Wl,--section-start=$(strip $(1))=$(call BOOT_SEC_OFFSET, $(3)) -Wl,--undefined=$(strip $(2))
+BOOT_API_LD_FLAGS     = $(call BOOT_SECTION_LD_FLAG, .apitable_jumptable,   BootloaderAPI_JumpTable,   32)
+BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_signatures,  BootloaderAPI_Signatures,  8)
+
 
 # Output format. (can be srec, ihex, binary)
 FORMAT = ihex
@@ -170,7 +178,7 @@ CPPSRC =
 #     Even though the DOS/Win* filesystem matches both .s and .S the same,
 #     it will preserve the spelling of the filenames, and gcc itself does
 #     care about how the name is spelled on its command-line.
-ASRC =
+ASRC = BootloaderAPITable.S
 
 
 # Optimization level, can be [0, 1, 2, 3, s].
@@ -215,7 +223,7 @@ CDEFS += $(LUFA_OPTS)
 ADEFS  = -DF_CPU=$(F_CPU)
 ADEFS += -DF_USB=$(F_USB)UL
 ADEFS += -DBOARD=BOARD_$(BOARD)
-ADEFS += -DBOOT_START_ADDR=$(BOOT_START)UL
+ADEFS += -DBOOT_START_ADDR=$(BOOT_START)
 ADEFS += $(LUFA_OPTS)
 
 
@@ -353,7 +361,7 @@ EXTMEMOPTS =
 #    -Map:      create map file
 #    --cref:    add cross reference to  map file
 LDFLAGS  = -Wl,-Map=$(TARGET).map,--cref
-LDFLAGS += -Wl,--section-start=.text=$(BOOT_START)
+LDFLAGS += -Wl,--section-start=.text=$(BOOT_START) $(BOOT_API_LD_FLAGS) 
 LDFLAGS += -Wl,--relax
 LDFLAGS += -Wl,--gc-sections
 LDFLAGS += $(EXTMEMOPTS)
