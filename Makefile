@@ -460,7 +460,7 @@ MSG_ERRORS_NONE = Errors: none
 MSG_BEGIN = -------- begin --------
 MSG_END = --------  end  --------
 MSG_SIZE_BEFORE = Size before:
-MSG_SIZE_AFTER = Size after:
+MSG_SIZE_AFTER = Maximum size: $(shell echo "($(BOOT_SECTION_SIZE_KB)) * 1024" | bc)\\nSize after:
 MSG_COFF = Converting to AVR COFF:
 MSG_EXTENDED_COFF = Converting to AVR Extended COFF:
 MSG_FLASH = Creating load file for Flash:
@@ -532,7 +532,7 @@ end:
 HEXSIZE = $(SIZE) --target=$(FORMAT) $(TARGET).hex
 ELFSIZE = $(SIZE) $(MCU_FLAG) $(FORMAT_FLAG) $(TARGET).elf
 MCU_FLAG = $(shell $(SIZE) --help | grep -- --mcu > /dev/null && echo --mcu=$(MCU) )
-FORMAT_FLAG = $(shell $(SIZE) --help | grep -- --format=.*avr > /dev/null && echo --format=avr )
+FORMAT_FLAG = $(shell $(SIZE) --help | grep -- --format=.*berkeley > /dev/null && echo --format=berkeley )
 
 
 sizebefore:
