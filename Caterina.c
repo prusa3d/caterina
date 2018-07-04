@@ -64,6 +64,7 @@ uint16_t Timeout = 0;
 
 uint16_t bootKey = 0x7777;
 volatile uint16_t *const bootKeyPtr = (volatile uint16_t *)(RAMEND-1);
+volatile uint16_t bootKeyPtrVal __attribute__ ((section (".noinit")));
 
 static bool IsPageAddressValid(const uint32_t Address)
 {
@@ -127,32 +128,38 @@ void LEDPulse(void)
 		L_LED_ON();
 }
 
+void Application_Jump_Check(void) ATTR_INIT_SECTION(3);
+
+void Application_Jump_Check(void)
+{
+    /* Save the value of the boot key memory before it is overwritten */
+    bootKeyPtrVal = *bootKeyPtr;
+}
+
 /** Main program entry point. This routine configures the hardware required by the bootloader, then continuously
  *  runs the bootloader processing routine until it times out or is instructed to exit.
  */
 int main(void)
 {
-	/* Save the value of the boot key memory before it is overwritten */
-	uint16_t bootKeyPtrVal = *bootKeyPtr;
-	*bootKeyPtr = 0;
+    *bootKeyPtr = 0;
 
-	/* Check the reason for the reset so we can act accordingly */
-	uint8_t  mcusr_state = MCUSR;		// store the initial state of the Status register
-	MCUSR = 0;							// clear all reset flags	
+    /* Check the reason for the reset so we can act accordingly */
+    uint8_t  mcusr_state = MCUSR;       // store the initial state of the Status register
+    MCUSR = 0;                          // clear all reset flags
 
-	/* Watchdog may be configured with a 15 ms period so must disable it before going any further */
-	wdt_disable();
-	
-	if (mcusr_state & (1<<EXTRF)) {
-		// External reset -  we should continue to self-programming mode.
-	} else if ((mcusr_state & (1<<PORF)) && (pgm_read_word(0) != 0xFFFF)) {		
-		// After a power-on reset skip the bootloader and jump straight to sketch 
-		// if one exists.	
-		StartSketch();
-	} else if ((mcusr_state & (1<<WDRF)) && (bootKeyPtrVal != bootKey) && (pgm_read_word(0) != 0xFFFF)) {	
-		// If it looks like an "accidental" watchdog reset then start the sketch.
-		StartSketch();
-	}
+    /* Watchdog may be configured with a 15 ms period so must disable it before going any further */
+    wdt_disable();
+
+    if (mcusr_state & (1<<EXTRF)) {
+        // External reset -  we should continue to self-programming mode.
+    } else if ((mcusr_state & (1<<PORF)) && (pgm_read_word(0) != 0xFFFF)) {
+        // After a power-on reset skip the bootloader and jump straight to sketch
+        // if one exists.
+        StartSketch();
+    } else if ((mcusr_state & (1<<WDRF)) && (bootKeyPtrVal != bootKey) && (pgm_read_word(0) != 0xFFFF)) {
+        // If it looks like an "accidental" watchdog reset then start the sketch.
+        StartSketch();
+    }
 	
 	/* Setup hardware required for the bootloader */
 	SetupHardware();
