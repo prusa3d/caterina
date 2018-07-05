@@ -48,17 +48,17 @@
 
 # USB vendor ID (VID)
 # reuse of this VID by others is forbidden by USB-IF
-# official Arduino LLC VID
-VID = 0x2341
+# official "Prusa Research s.r.o." VID
+VID = 0x2c99
 
 
 # USB product ID (PID)
-# official Leonardo PID
-PID = 0x0036
-# official Micro PID
-# PID = 0x0037
-# official Esplora PID
-# PID = 0x003C
+# official "i3 MK2"
+#PID = 0x0001
+# official "i3 MK3"
+#PID = 0x0002
+# official "i3 MK3 MMU 2.0"
+PID = 0x0003
 
 # MCU name
 MCU = atmega32u4
@@ -153,7 +153,7 @@ LUFA_OPTS += -D NO_SOF_EVENTS
 
 #LUFA_OPTS += -D NO_BLOCK_SUPPORT
 #LUFA_OPTS += -D NO_EEPROM_BYTE_SUPPORT
-#LUFA_OPTS += -D NO_FLASH_BYTE_SUPPORT
+LUFA_OPTS += -D NO_FLASH_BYTE_SUPPORT
 LUFA_OPTS += -D NO_LOCK_BYTE_WRITE_SUPPORT
 
 
@@ -377,7 +377,7 @@ LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB)
 # Type: avrdude -c ?
 # to get a full listing.
 #
-AVRDUDE_PROGRAMMER = avrispmkII
+AVRDUDE_PROGRAMMER = usbasp
 
 # com1 = serial port. Use lpt1 to connect to parallel port.
 AVRDUDE_PORT = usb
@@ -447,7 +447,7 @@ OBJDUMP = avr-objdump
 SIZE = avr-size
 AR = avr-ar rcs
 NM = avr-nm
-AVRDUDE = /Applications/avrdude -C /Applications/avrdude.conf -B 1
+AVRDUDE = avrdude
 REMOVE = rm -f
 REMOVEDIR = rm -rf
 COPY = cp

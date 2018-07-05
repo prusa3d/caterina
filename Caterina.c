@@ -51,13 +51,6 @@ static CDC_LineEncoding_t LineEncoding = { .BaudRateBPS = 0,
  */
 static uint32_t CurrAddress;
 
-/** Flag to indicate if the bootloader should be running, or should exit and allow the application code to run
- *  via a watchdog reset. When cleared the bootloader will exit, starting the watchdog and entering an infinite
- *  loop until the AVR restarts and the application runs.
- */
-static bool RunBootloader = true;
-
-
 /* Bootloader timeout timer */
 #define TIMEOUT_PERIOD	8000
 uint16_t Timeout = 0;
@@ -152,11 +145,11 @@ int main(void)
 
     if (mcusr_state & (1<<EXTRF)) {
         // External reset -  we should continue to self-programming mode.
-    } else if ((mcusr_state & (1<<PORF)) && (pgm_read_word(0) != 0xFFFF)) {
+    } else if (
+    	((mcusr_state & (1<<PORF)) && (pgm_read_word(0) != 0xFFFF)) ||
         // After a power-on reset skip the bootloader and jump straight to sketch
         // if one exists.
-        StartSketch();
-    } else if ((mcusr_state & (1<<WDRF)) && (bootKeyPtrVal != bootKey) && (pgm_read_word(0) != 0xFFFF)) {
+     	((mcusr_state & (1<<WDRF)) && (bootKeyPtrVal != bootKey) && (pgm_read_word(0) != 0xFFFF))) {
         // If it looks like an "accidental" watchdog reset then start the sketch.
         StartSketch();
     }
@@ -169,13 +162,13 @@ int main(void)
 	
 	Timeout = 0;
 	
-	while (RunBootloader)
+	for (;;)
 	{
 		CDC_Task();
 		USB_USBTask();
 		/* Time out and start the sketch if one is present */
 		if (Timeout > TIMEOUT_PERIOD)
-			RunBootloader = false;
+			break;
 
 		LEDPulse();
 	}

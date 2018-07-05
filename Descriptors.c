@@ -59,7 +59,7 @@ const USB_Descriptor_Device_t DeviceDescriptor =
 
 	.ManufacturerStrIndex   = 0x02,
 	.ProductStrIndex        = 0x01,
-	.SerialNumStrIndex      = NO_DESCRIPTOR,
+	.SerialNumStrIndex      = 0x03,
 
 	.NumberOfConfigurations = FIXED_NUM_CONFIGURATIONS
 };
@@ -191,9 +191,11 @@ const USB_Descriptor_String_t LanguageString =
  */
 const USB_Descriptor_String_t ProductString =
 {
-	.Header                 = {.Size = USB_STRING_LEN(16), .Type = DTYPE_String},
+	.Header                 = {.Size = USB_STRING_LEN(61), .Type = DTYPE_String},
 
-	#if DEVICE_PID == 0x0036
+	#if DEVICE_PID == 0x0003
+	.UnicodeString          = L"Original Prusa i3 MK3 Multi Material 2.0 upgrade (bootloader)"
+	#elif DEVICE_PID == 0x0036
 	.UnicodeString          = L"Arduino Leonardo" 
 	#elif DEVICE_PID == 0x0037
 	.UnicodeString			= L"Arduino Micro   "
@@ -206,14 +208,71 @@ const USB_Descriptor_String_t ProductString =
 
 const USB_Descriptor_String_t ManufNameString = 
 {
-	.Header					= {.Size = USB_STRING_LEN(11), .Type = DTYPE_String},
+	.Header					= {.Size = USB_STRING_LEN(28), .Type = DTYPE_String},
 	
-	#if DEVICE_VID == 0x2341
+	#if DEVICE_VID == 0x2c99
+	.UnicodeString			= L"Prusa Research (prusa3d.com)"
+	#elif DEVICE_VID == 0x2341
 	.UnicodeString			= L"Arduino LLC"
 	#else
 	.UnicodeString			= L"Unknown    "
 	#endif
 };
+
+// macro to disable interrupts and return the previous status flags
+#define DISABLE_INT()                            \
+({                                               \
+    uint8_t flag;                                \
+    __asm__ __volatile__                         \
+    (                                            \
+        "in %0, 0x3f"               "\n\t"       \
+        "cli"                       "\n\t"       \
+        : "=r" (flag)                            \
+        :                                        \
+        : "memory"                               \
+    );                                           \
+    flag;                                        \
+})
+
+// macro to restore the previous interrupt enable state
+#define RESTORE_INT(flag)                        \
+({                                               \
+    __asm__ __volatile__                         \
+    (                                            \
+        "out 0x3f, %0"               "\n\t"      \
+        :                                        \
+        : "d" (flag)                             \
+        : "memory"                               \
+    );                                           \
+})
+
+// macro to read a byte from the "signature row" given its index
+#define READ_SIG_BYTE(idx)                       \
+({                                               \
+    uint8_t val = _BV(SPMEN) | _BV(SIGRD);       \
+    uint8_t *sigPtr = (uint8_t *)(uint16_t)idx;  \
+    uint8_t stat = DISABLE_INT();                \
+    __asm__                                      \
+    (                                            \
+        "out %2, %0"        "\n\t"               \
+        "lpm %0, Z"         "\n\t"               \
+        : "=r" (val)                             \
+        : "z" (sigPtr),                          \
+          "I" (_SFR_IO_ADDR(SPMCSR)),            \
+          "0" (val)                              \
+    );                                           \
+    RESTORE_INT(stat);                           \
+    val;                                         \
+})
+
+#define Flash_read_sn(pos)          (READ_SIG_BYTE((0x07*2)+(pos)))	//!< This macro function allows to read the serial number of the product.
+#define SN_LENGTH                   10                     			//!< Size of the serial number containt in product.
+
+struct
+{
+	USB_Descriptor_Header_t Header;
+	uint16_t UnicodeString[SN_LENGTH * 2];
+} ATTR_PACKED SerialNumberString;
 
 /** This function is called by the library when in device mode, and must be overridden (see LUFA library "USB Descriptors"
  *  documentation) by the application code so that the address and size of a requested descriptor can be given
@@ -255,6 +314,21 @@ uint16_t CALLBACK_USB_GetDescriptor(const uint16_t wValue,
 			{
 				Address = &ManufNameString;
 				Size	= ManufNameString.Header.Size;
+			} else if (DescriptorNumber == DeviceDescriptor.SerialNumStrIndex)
+			{
+				uint8_t i = 0;
+				SerialNumberString.Header.Size = USB_STRING_LEN(20);
+				SerialNumberString.Header.Type = DTYPE_String;
+				for (; i < SN_LENGTH * 2; ++ i) {
+					uint8_t id = Flash_read_sn(i >> 1);
+					if (i & 1)
+						id &= 0x0f;
+					else
+						id >>= 4;
+					SerialNumberString.UnicodeString[i] = id + ((id < 10) ? '0' : ('A' - 10));
+				}
+				Address = &SerialNumberString;
+				Size	= SerialNumberString.Header.Size;
 			}
 
 			break;
@@ -263,4 +337,3 @@ uint16_t CALLBACK_USB_GetDescriptor(const uint16_t wValue,
 	*DescriptorAddress = Address;
 	return Size;
 }
-
