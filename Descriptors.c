@@ -191,10 +191,10 @@ const USB_Descriptor_String_t LanguageString =
  */
 const USB_Descriptor_String_t ProductString =
 {
-	.Header                 = {.Size = USB_STRING_LEN(61), .Type = DTYPE_String},
+	.Header                 = {.Size = USB_STRING_LEN(48), .Type = DTYPE_String},
 
 	#if DEVICE_PID == 0x0003
-	.UnicodeString          = L"Original Prusa i3 MK3 Multi Material 2.0 upgrade (bootloader)"
+	.UnicodeString          = L"Original Prusa i3 MK3 Multi Material 2.0 upgrade"
 	#elif DEVICE_PID == 0x0036
 	.UnicodeString          = L"Arduino Leonardo" 
 	#elif DEVICE_PID == 0x0037

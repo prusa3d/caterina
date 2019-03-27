@@ -312,9 +312,6 @@ static void ReadWriteMemoryBlock(const uint8_t Command)
 		return;
 	}
 
-	/* Disable timer 1 interrupt - can't afford to process nonessential interrupts
-	 * while doing SPM tasks */
-	TIMSK1 = 0;
 
 	/* Check if command is to read memory */
 	if (Command == 'g')
@@ -398,9 +395,6 @@ static void ReadWriteMemoryBlock(const uint8_t Command)
 		/* Send response byte back to the host */
 		WriteNextResponseByte('\r');
 	}
-
-	/* Re-enable timer 1 interrupt disabled earlier in this routine */	
-	TIMSK1 = (1 << OCIE1A);
 }
 #endif
 

@@ -30,54 +30,6 @@
 
 ; Trampolines to actual API implementations if the target address is outside the
 ; range of a rjmp instruction (can happen with large bootloader sections)
-.section .apitable_trampolines, "ax"
-.global BootloaderAPI_Trampolines
-BootloaderAPI_Trampolines:
-
-	BootloaderAPI_ErasePage_Trampoline:
-		ret
-	BootloaderAPI_WritePage_Trampoline:
-		ret
-	BootloaderAPI_FillWord_Trampoline:
-		ret
-	BootloaderAPI_ReadSignature_Trampoline:
-		ret
-	BootloaderAPI_ReadFuse_Trampoline:
-		ret
-	BootloaderAPI_ReadLock_Trampoline:
-		ret
-	BootloaderAPI_WriteLock_Trampoline:
-		ret
-	BootloaderAPI_UNUSED1:
-		ret
-	BootloaderAPI_UNUSED2:
-		ret
-	BootloaderAPI_UNUSED3:
-		ret
-	BootloaderAPI_UNUSED4:
-		ret
-	BootloaderAPI_UNUSED5:
-		ret
-
-
-
-; API function jump table
-.section .apitable_jumptable, "ax"
-.global BootloaderAPI_JumpTable
-BootloaderAPI_JumpTable:
-
-	rjmp BootloaderAPI_ErasePage_Trampoline
-	rjmp BootloaderAPI_WritePage_Trampoline
-	rjmp BootloaderAPI_FillWord_Trampoline
-	rjmp BootloaderAPI_ReadSignature_Trampoline
-	rjmp BootloaderAPI_ReadFuse_Trampoline
-	rjmp BootloaderAPI_ReadLock_Trampoline
-	rjmp BootloaderAPI_WriteLock_Trampoline
-	rjmp BootloaderAPI_UNUSED1 ; UNUSED ENTRY 1
-	rjmp BootloaderAPI_UNUSED2 ; UNUSED ENTRY 2
-	rjmp BootloaderAPI_UNUSED3 ; UNUSED ENTRY 3
-	rjmp BootloaderAPI_UNUSED4 ; UNUSED ENTRY 4
-	rjmp BootloaderAPI_UNUSED5 ; UNUSED ENTRY 5
 
 
 
