@@ -191,17 +191,23 @@ const USB_Descriptor_String_t LanguageString =
  */
 const USB_Descriptor_String_t ProductString =
 {
-	.Header                 = {.Size = USB_STRING_LEN(48), .Type = DTYPE_String},
-
 	#if DEVICE_PID == 0x0003
+    .Header                 = {.Size = USB_STRING_LEN(48), .Type = DTYPE_String},
 	.UnicodeString          = L"Original Prusa i3 MK3 Multi Material 2.0 upgrade"
+    #elif DEVICE_PID == 0x0007
+	.Header                 = {.Size = USB_STRING_LEN(31), .Type = DTYPE_String},
+    .UnicodeString          = L"Original Prusa CW1 (bootloader)"
 	#elif DEVICE_PID == 0x0036
+    .Header                 = {.Size = USB_STRING_LEN(16), .Type = DTYPE_String},
 	.UnicodeString          = L"Arduino Leonardo" 
 	#elif DEVICE_PID == 0x0037
+	.Header                 = {.Size = USB_STRING_LEN(16), .Type = DTYPE_String},
 	.UnicodeString			= L"Arduino Micro   "
 	#elif DEVICE_PID == 0x003C
+	.Header                 = {.Size = USB_STRING_LEN(16), .Type = DTYPE_String},
 	.UnicodeString			= L"Arduino Esplora "
 	#else
+	.Header                 = {.Size = USB_STRING_LEN(16), .Type = DTYPE_String},
 	.UnicodeString			= L"USB IO board    "
 	#endif
 };

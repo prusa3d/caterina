@@ -58,7 +58,9 @@ VID = 0x2c99
 # official "i3 MK3"
 #PID = 0x0002
 # official "i3 MK3 MMU 2.0"
-PID = 0x0003
+#PID = 0x0003
+# official "Original Prusa CW1 (bootloader)"
+PID = 0x0007
 
 # MCU name
 MCU = atmega32u4
