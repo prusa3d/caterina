@@ -55,7 +55,7 @@ static uint32_t CurrAddress;
 #define TIMEOUT_PERIOD	8000
 uint16_t Timeout = 0;
 
-uint16_t bootKey = 0x7777;
+const uint16_t bootKey = 0x7777;
 volatile uint16_t *const bootKeyPtr = (volatile uint16_t *)(RAMEND-1);
 volatile uint16_t bootKeyPtrVal __attribute__ ((section (".noinit")));
 
@@ -134,10 +134,9 @@ void Application_Jump_Check(void)
  */
 int main(void)
 {
-    *bootKeyPtr = 0;
-
     /* Check the reason for the reset so we can act accordingly */
-    uint8_t  mcusr_state = MCUSR;       // store the initial state of the Status register
+    const uint8_t  mcusr_state = MCUSR; // store the initial state of the Status register
+    *bootKeyPtr = mcusr_state;          // Store reset reason into block of memory shared with application
     MCUSR = 0;                          // clear all reset flags
 
     /* Watchdog may be configured with a 15 ms period so must disable it before going any further */
