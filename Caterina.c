@@ -143,15 +143,17 @@ int main(void)
     /* Watchdog may be configured with a 15 ms period so must disable it before going any further */
     wdt_disable();
 
-    if (mcusr_state & (1<<EXTRF)) {
-        // External reset -  we should continue to self-programming mode.
-    } else if (
-    	((mcusr_state & (1<<PORF)) && (pgm_read_word(0) != 0xFFFF)) ||
-        // After a power-on reset skip the bootloader and jump straight to sketch
-        // if one exists.
-     	((mcusr_state & (1<<WDRF)) && (bootKeyPtrVal != bootKey) && (pgm_read_word(0) != 0xFFFF))) {
-        // If it looks like an "accidental" watchdog reset then start the sketch.
-        StartSketch();
+    if (pgm_read_word(0) != 0xFFFF)
+    {
+        if ((mcusr_state == (1<<BORF)) ||
+           // brown-out reset
+           (mcusr_state & (1<<PORF)) ||
+           // power-on reset
+           ((mcusr_state & (1<<WDRF)) && bootKeyPtrVal != bootKey))
+           // Or an "accidental" watchdog reset start the sketch.
+        {
+            StartSketch();
+        }
     }
 	
 	/* Setup hardware required for the bootloader */
